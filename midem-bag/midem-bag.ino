@@ -26,7 +26,15 @@ aci_evt_opcode_t laststatus = ACI_EVT_DISCONNECTED;
 WS2801 strip = WS2801(48, dataPin, clockPin);
 
 
+// tassel switches
+int bluePin = A0;
+int pinkPin = A1;
+
 void setup() {
+  // turn on pull-up resistor for tassel switch
+  pinMode( A0, INPUT_PULLUP );
+  pinMode( A1, INPUT_PULLUP );
+
   // LED set up
   strip.begin();
 
@@ -103,18 +111,44 @@ void loop() {
         BTLEserial.write(sendbuffer, sendbuffersize);
       }
     }
-    /*
 
-    // Next up, see if we have any data to get from the Serial console
+    // check if tassel was switched on
+    int blueValue = digitalRead( bluePin );
+    if ( blueValue == LOW ) {
+      // change lights
+      colorWipe(Color(0, 0, 255), 50);
 
-    if (Serial.available()) {
-      // Read a line from Serial
-      Serial.setTimeout(100); // 100 millisecond timeout
-      String s = Serial.readString();
+      // send message
+      String s = "blue tassel";
+      // We need to convert the line to bytes, no more than 20 at this time
+      uint8_t sendbuffer[20];
+      s.getBytes(sendbuffer, 20);
+      char sendbuffersize = min(20, s.length());
 
+      Serial.print(F("\n* Sending -> \"")); Serial.print((char *)sendbuffer); Serial.println("\"");
 
+      // write the data
+      BTLEserial.write(sendbuffer, sendbuffersize);
     }
-    */
+
+    int pinkValue = digitalRead( pinkPin );
+    if ( pinkValue == LOW ) {
+      Serial.println("pink tassel");
+      // change lights
+      colorWipe(Color(205, 0, 0), 50);
+
+      // send message
+      String s = "pink tassel";
+      // We need to convert the line to bytes, no more than 20 at this time
+      uint8_t sendbuffer[20];
+      s.getBytes(sendbuffer, 20);
+      char sendbuffersize = min(20, s.length());
+
+      Serial.print(F("\n* Sending -> \"")); Serial.print((char *)sendbuffer); Serial.println("\"");
+
+      // write the data
+      BTLEserial.write(sendbuffer, sendbuffersize);
+    }
   }
 }
 
