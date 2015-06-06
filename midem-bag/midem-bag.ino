@@ -3,15 +3,11 @@
 #include "Adafruit_BLE_UART.h"
 
 /*****************************************************************************
-Example sketch for driving WS2801 pixels
-*****************************************************************************/
+Hack for Midem Hack Day 2015
 
-// Choose which 2 pins you will use for output.
-// Can be any valid output pins.
-// The colors of the wires may be totally different so
-// BE SURE TO CHECK YOUR PIXELS TO SEE WHICH WIRES TO USE!
-int dataPin = 4;
-int clockPin = 5;
+by Becky Stewart
+
+*****************************************************************************/
 
 // Connect CLK/MISO/MOSI to hardware SPI
 // e.g. On UNO & compatible: CLK = 13, MISO = 12, MOSI = 11
@@ -22,14 +18,25 @@ int clockPin = 5;
 Adafruit_BLE_UART BTLEserial = Adafruit_BLE_UART(ADAFRUITBLE_REQ, ADAFRUITBLE_RDY, ADAFRUITBLE_RST);
 aci_evt_opcode_t laststatus = ACI_EVT_DISCONNECTED;
 
-// Set the first variable to the NUMBER of pixels. 25 = 25 pixels in a row
-WS2801 strip = WS2801(48, dataPin, clockPin);
-
+// Output pins for WS2801 LEDs
+#define DATA 4
+#define CLOCK 5
+#define NUMLEDS 48
+// Set the first variable to the NUMBER of pixels
+WS2801 strip = WS2801(NUMLEDS, DATA, CLOCK);
 
 // tassel switches
 int bluePin = A0;
 int pinkPin = A1;
 
+// variables for animation
+int currFrame = 0;
+int currAnimation = 0;
+long lastFrameTime;
+
+/*-----------------------------
+  Set up everything
+-------------------------------*/
 void setup() {
   // turn on pull-up resistor for tassel switch
   pinMode( A0, INPUT_PULLUP );
@@ -43,22 +50,22 @@ void setup() {
 
   // start Serial
   Serial.begin(9600);
-  //while (!Serial); // Leonardo/Micro should wait for serial init
+  while (!Serial); // Leonardo/Micro should wait for serial init
   Serial.println(F("MIDEM HACK BAG"));
 
   // start Bluetooth
   BTLEserial.setDeviceName("BAG"); /* 7 characters max! */
   BTLEserial.begin();
+
+  // start with no connection animation
+  lastFrameTime = millis();
+  setAnimation(0);
 }
 
-
+/*-----------------------------
+  Continuously loops
+-------------------------------*/
 void loop() {
-  // Some example procedures showing how to display to the pixels
-  //colorWipe(Color(0, 255, 0), 50);
-  //colorWipe(Color(0, 0, 255), 50);
-  //rainbow(20);
-  //rainbowCycle(20);
-
   // Tell the nRF8001 to do whatever it should be working on.
   BTLEserial.pollACI();
 
@@ -72,12 +79,18 @@ void loop() {
     }
     if (status == ACI_EVT_CONNECTED) {
       Serial.println(F("* Connected!"));
+      setAnimation(1);
     }
     if (status == ACI_EVT_DISCONNECTED) {
       Serial.println(F("* Disconnected or advertising timed out"));
+      setAnimation(0);
     }
     // OK set the last status change to this one
     laststatus = status;
+  }
+
+  if (status == ACI_EVT_DISCONNECTED) {
+    //nextFrame();
   }
 
   if (status == ACI_EVT_CONNECTED) {
@@ -115,6 +128,7 @@ void loop() {
     // check if tassel was switched on
     int blueValue = digitalRead( bluePin );
     if ( blueValue == LOW ) {
+      Serial.println("blue tassel");
       // change lights
       colorWipe(Color(0, 0, 255), 50);
 
@@ -132,11 +146,11 @@ void loop() {
     }
 
     int pinkValue = digitalRead( pinkPin );
+    Serial.println(pinkPin);
     if ( pinkValue == LOW ) {
       Serial.println("pink tassel");
       // change lights
-      colorWipe(Color(205, 0, 0), 50);
-
+      nextAnimation();
       // send message
       String s = "pink tassel";
       // We need to convert the line to bytes, no more than 20 at this time
@@ -148,10 +162,84 @@ void loop() {
 
       // write the data
       BTLEserial.write(sendbuffer, sendbuffersize);
+      
+      // debounce
+      delay(100);
     }
   }
+  // write out next frame of animation
+  nextFrame();
 }
 
+/*-----------------------------
+  Set current animation
+-------------------------------*/
+void setAnimation(int a) {
+  currAnimation = a;
+}
+
+/*-----------------------------
+  Set next animation
+-------------------------------*/
+void nextAnimation() {
+  currAnimation = (currAnimation + 1) % 3;
+}
+
+/*-----------------------------
+  Display next frame of the current animation
+-------------------------------*/
+void nextFrame() {
+  long t = millis();
+
+  switch ( currAnimation ) {
+    case 0:
+      for (int i = 0; i < strip.numPixels(); i++) {
+        strip.setPixelColor(i, 0);
+      }
+      strip.setPixelColor(currFrame, Color(200, 0, 100));
+      strip.setPixelColor( (currFrame * 2) % strip.numPixels(), Color(200, 0, 100));
+      strip.show();   // write all the pixels out
+      delay(200);
+      break;
+
+    case 1:
+      if ( t - lastFrameTime > 200 ) {
+        for (int j = 0; j < 256; j++) {   // 3 cycles of all 256 colors in the wheel
+          for (int i = 0; i < strip.numPixels(); i++) {
+            strip.setPixelColor(i, Wheel( (i + j) % 255));
+          }
+          strip.show();   // write all the pixels out
+        }
+      }
+      lastFrameTime = millis();
+      break;
+
+    case 2:
+      if ( t - lastFrameTime > 1000 ) {
+        for (int j = 0; j < 256; j++) {   // 3 cycles of all 256 colors in the wheel
+          for (int i = 0; i < strip.numPixels(); i++) {
+            strip.setPixelColor(i, Wheel( (i + j) % 255));
+          }
+          strip.show();   // write all the pixels out
+        }
+      }
+      lastFrameTime = millis();
+      break;
+
+    case 3:
+      for (int i = 0; i < strip.numPixels(); i++) {
+        strip.setPixelColor(i, Color(100, 0, 100));
+      }
+      strip.show();
+      break;
+  }
+
+  currFrame++; // advance to next frame
+  currFrame = currFrame % NUMLEDS; // loop back to 0 when end of array of LEDs
+}
+
+/*-----------------------------
+-------------------------------*/
 void rainbow(uint8_t wait) {
   int i, j;
 
@@ -164,8 +252,10 @@ void rainbow(uint8_t wait) {
   }
 }
 
+/*-----------------------------
 // Slightly different, this one makes the rainbow wheel equally distributed
 // along the chain
+-------------------------------*/
 void rainbowCycle(uint8_t wait) {
   int i, j;
 
@@ -182,8 +272,10 @@ void rainbowCycle(uint8_t wait) {
   }
 }
 
-// fill the dots one after the other with said color
-// good for testing purposes
+/*-----------------------------
+ fill the dots one after the other with said color
+ good for testing purposes
+-------------------------------*/
 void colorWipe(uint32_t c, uint8_t wait) {
   int i;
 
@@ -194,9 +286,12 @@ void colorWipe(uint32_t c, uint8_t wait) {
   }
 }
 
+
 /* Helper functions */
 
-// Create a 24 bit color value from R,G,B
+/*-----------------------------
+ Create a 24 bit color value from R,G,B
+-------------------------------*/
 uint32_t Color(byte r, byte g, byte b)
 {
   uint32_t c;
@@ -208,8 +303,10 @@ uint32_t Color(byte r, byte g, byte b)
   return c;
 }
 
-//Input a value 0 to 255 to get a color value.
-//The colours are a transition r - g -b - back to r
+/*-----------------------------
+  Input a value 0 to 255 to get a color value.
+  The colours are a transition r - g -b - back to r
+-------------------------------*/
 uint32_t Wheel(byte WheelPos)
 {
   if (WheelPos < 85) {
