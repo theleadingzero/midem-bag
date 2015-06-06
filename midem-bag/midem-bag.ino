@@ -28,11 +28,13 @@ WS2801 strip = WS2801(NUMLEDS, DATA, CLOCK);
 // tassel switches
 int bluePin = A0;
 int pinkPin = A1;
+long lastTasselTime;
 
 // variables for animation
 int currFrame = 0;
 int currAnimation = 0;
 long lastFrameTime;
+int rainbowFrame = 0;
 
 /*-----------------------------
   Set up everything
@@ -60,6 +62,9 @@ void setup() {
   // start with no connection animation
   lastFrameTime = millis();
   setAnimation(0);
+
+  // tassel debounce
+  lastTasselTime = millis();
 }
 
 /*-----------------------------
@@ -127,7 +132,7 @@ void loop() {
 
     // check if tassel was switched on
     int blueValue = digitalRead( bluePin );
-    if ( blueValue == LOW ) {
+    if ( blueValue == LOW && (millis() - lastTasselTime) > 500) {
       Serial.println("blue tassel");
       // change lights
       colorWipe(Color(0, 0, 255), 50);
@@ -143,11 +148,12 @@ void loop() {
 
       // write the data
       BTLEserial.write(sendbuffer, sendbuffersize);
+      // update debounce time
+      lastTasselTime = millis();
     }
 
     int pinkValue = digitalRead( pinkPin );
-    Serial.println(pinkPin);
-    if ( pinkValue == LOW ) {
+    if ( pinkValue == LOW && (millis() - lastTasselTime) > 1000) {
       Serial.println("pink tassel");
       // change lights
       nextAnimation();
@@ -162,9 +168,8 @@ void loop() {
 
       // write the data
       BTLEserial.write(sendbuffer, sendbuffersize);
-      
-      // debounce
-      delay(100);
+      // update debaounce time
+      lastTasselTime = millis();
     }
   }
   // write out next frame of animation
@@ -176,21 +181,23 @@ void loop() {
 -------------------------------*/
 void setAnimation(int a) {
   currAnimation = a;
+  Serial.print("current animation: ");
+  Serial.println(currAnimation);
 }
 
 /*-----------------------------
   Set next animation
 -------------------------------*/
 void nextAnimation() {
-  currAnimation = (currAnimation + 1) % 3;
+  currAnimation = (currAnimation + 1) % 3 + 1;
+  Serial.print("current animation: ");
+  Serial.println(currAnimation);
 }
 
 /*-----------------------------
   Display next frame of the current animation
 -------------------------------*/
 void nextFrame() {
-  long t = millis();
-
   switch ( currAnimation ) {
     case 0:
       for (int i = 0; i < strip.numPixels(); i++) {
@@ -203,19 +210,19 @@ void nextFrame() {
       break;
 
     case 1:
-      if ( t - lastFrameTime > 200 ) {
-        for (int j = 0; j < 256; j++) {   // 3 cycles of all 256 colors in the wheel
-          for (int i = 0; i < strip.numPixels(); i++) {
-            strip.setPixelColor(i, Wheel( (i + j) % 255));
-          }
-          strip.show();   // write all the pixels out
+      if ( (millis() - lastFrameTime) > 20 ) {
+        for (int i = 0; i < strip.numPixels(); i++) {
+          strip.setPixelColor(i, Wheel( (i + rainbowFrame) % 255));
         }
+        strip.show();   // write all the pixels out
       }
+      rainbowFrame++;
+      rainbowFrame = rainbowFrame % 256;
       lastFrameTime = millis();
       break;
 
     case 2:
-      if ( t - lastFrameTime > 1000 ) {
+      if ( (millis() - lastFrameTime) > 1000 ) {
         for (int j = 0; j < 256; j++) {   // 3 cycles of all 256 colors in the wheel
           for (int i = 0; i < strip.numPixels(); i++) {
             strip.setPixelColor(i, Wheel( (i + j) % 255));
