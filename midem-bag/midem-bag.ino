@@ -1,5 +1,5 @@
-#include "SPI.h"
-#include "WS2801.h"
+#include <SPI.h>
+#include <WS2801.h>
 
 /*****************************************************************************
 Example sketch for driving WS2801 pixels
@@ -18,7 +18,7 @@ int micPin = A0;
 
 
 // Set the first variable to the NUMBER of pixels. 25 = 25 pixels in a row
-WS2801 strip = WS2801(25, dataPin, clockPin);
+WS2801 strip = WS2801(48, dataPin, clockPin);
 
 // Optional: leave off pin numbers to use hardware SPI
 // (pinout is then specific to each board and can't be changed)
@@ -40,25 +40,10 @@ void loop() {
   // Some example procedures showing how to display to the pixels
 
 
-  //colorWipe(Color(0, 255, 0), 50);
-  //colorWipe(Color(0, 0, 255), 50);
+  colorWipe(Color(0, 255, 0), 50);
+  colorWipe(Color(0, 0, 255), 50);
   //rainbow(20);
   //rainbowCycle(20);
-
-  int micValue = analogRead( micPin );
-  int micMap = map( micValue, 0, 1024, 0, 10);
-  Serial.println(micMap);
-  delay( 3 );
-
-  /*int i, j;
-
-  for (j = 0; j < 256; j++) {
-    for (i = 0; i < strip.numPixels(); i++) {
-      strip.setPixelColor(i, Color(0 , 255, 0) );
-    }
-    strip.show();   // write all the pixels out
-    delay(10);
-  }*/
 
 }
 
