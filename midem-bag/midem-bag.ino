@@ -52,7 +52,7 @@ void setup() {
 
   // start Serial
   Serial.begin(9600);
-  while (!Serial); // Leonardo/Micro should wait for serial init
+  //while (!Serial); // Leonardo/Micro should wait for serial init
   Serial.println(F("MIDEM HACK BAG"));
 
   // start Bluetooth
@@ -110,12 +110,14 @@ void loop() {
 
       // red if received a 'r'
       if ( c == 'R' ) {
-        colorWipe(Color(255, 0, 0), 50);
+        //colorWipe(Color(255, 0, 0), 50);
+        setAnimation(4);
       }
 
       // green if received a 'g'
       if ( c == 'G' ) {
-        colorWipe(Color(0, 255, 0), 50);
+        //colorWipe(Color(0, 255, 0), 50);
+        setAnimation(5);
 
         String s = "green";
         // We need to convert the line to bytes, no more than 20 at this time
@@ -199,6 +201,7 @@ void nextAnimation() {
 -------------------------------*/
 void nextFrame() {
   switch ( currAnimation ) {
+    // not connected
     case 0:
       for (int i = 0; i < strip.numPixels(); i++) {
         strip.setPixelColor(i, 0);
@@ -209,33 +212,55 @@ void nextFrame() {
       delay(200);
       break;
 
+    // rainbow
     case 1:
-      if ( (millis() - lastFrameTime) > 20 ) {
-        for (int i = 0; i < strip.numPixels(); i++) {
-          strip.setPixelColor(i, Wheel( (i + rainbowFrame) % 255));
-        }
-        strip.show();   // write all the pixels out
-      }
-      rainbowFrame++;
-      rainbowFrame = rainbowFrame % 256;
-      lastFrameTime = millis();
-      break;
-
-    case 2:
-      if ( (millis() - lastFrameTime) > 1000 ) {
+      if ( (millis() - lastFrameTime) > 500 ) {
         for (int j = 0; j < 256; j++) {   // 3 cycles of all 256 colors in the wheel
           for (int i = 0; i < strip.numPixels(); i++) {
             strip.setPixelColor(i, Wheel( (i + j) % 255));
           }
           strip.show();   // write all the pixels out
         }
+        lastFrameTime = millis();
       }
-      lastFrameTime = millis();
       break;
 
+      break;
+
+    // slow rainbow
+    case 2:
+      if ( (millis() - lastFrameTime) > 4000 ) {
+        for (int j = 0; j < 126; j++) {   // 3 cycles of all 256 colors in the wheel
+          for (int i = 0; i < strip.numPixels(); i++) {
+            strip.setPixelColor(i, Wheel( (i + j) % 255));
+          }
+          strip.show();   // write all the pixels out
+          delay(3);
+        }
+        lastFrameTime = millis();
+      }
+      break;
+
+    // solid pink
     case 3:
       for (int i = 0; i < strip.numPixels(); i++) {
         strip.setPixelColor(i, Color(100, 0, 100));
+      }
+      strip.show();
+      break;
+
+    //  solid red
+    case 4:
+      for (int i = 0; i < strip.numPixels(); i++) {
+        strip.setPixelColor(i, Color(255, 0, 0));
+      }
+      strip.show();
+      break;
+
+    // solid green
+    case 5:
+      for (int i = 0; i < strip.numPixels(); i++) {
+        strip.setPixelColor(i, Color(0, 255, 0));
       }
       strip.show();
       break;
